@@ -17,6 +17,7 @@
 
 import time
 import json
+import sys
 from lagosh import ds_client
 from datetime import datetime
 
@@ -31,4 +32,5 @@ while exit_loop != True:
   log['flows'] = ds_client().call(subcmd + '\n')
 
   print json.dumps(log)
+  print sys.stdout.flush()
   time.sleep(sec)
