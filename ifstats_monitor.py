@@ -24,6 +24,16 @@ import getopt
 from prettytable import PrettyTable
 from lagosh import ds_client
 
+def calc_pps(n_packets, o_packets, deltatime):
+  return (n_packets - o_packets) / deltatime
+def calc_pps_str(n_packets, o_packets, dletatime):
+  return '{:,}'.format(calc_pps(n_packets, o_pakcets, deltatime))
+
+def calc_bps(n_bytes, o_bytes, deltatime):
+  return (n_bitcount - o_bitcounts) * 8 / deltatime
+def calc_bps_str(n_bytes, o_bytes, deltatime):
+  return '{:,}'.format(calc_bps(n_bytes, o_bytes, deltatime))
+
 class lago_ifstats():
   interfaces = {}
   exit_loop = False
@@ -31,14 +41,14 @@ class lago_ifstats():
   def __init__(self):
     self.get_interfaces()
 
-  def get_interfaces(self, calc_throughput = True):
+  def get_interfaces(self, calc_throughput = False):
     n_timestamp = datetime.datetime.now()
     try:
       delta = n_timestamp - self.timestamp
     except:
       delta = n_timestamp - n_timestamp
     self.timestamp = n_timestamp
-    delta_seconds = delta.total_seconds()
+    delta_sec = delta.total_seconds()
 
     for ifdata in ds_client().call('interface\n'):
       name = ifdata[u'name']
@@ -47,15 +57,11 @@ class lago_ifstats():
 
       if calc_throughput == True:
         try:
-          rx_bps = (res[u'rx-bytes'] - interface[name][u'rx-bytes']) * 8 / delta_seconds
-          tx_bps = (res[u'tx-bytes'] - interface[name][u'tx-bytes']) * 8 / delta_seconds
-          rx_pps = (res[u'rx-packets'] - interface[name][u'rx-packets']) / delta_seconds
-          tx_pps = (res[u'tx-packets'] - interface[name][u'tx-packets']) / delta_seconds
-          rx_bps_str = '{:,}'.format(rx_bps)
-          tx_bps_str = '{:,}'.format(tx_bps)
-          rx_pps_str = '{:,}'.format(rx_pps)
-          tx_pps_str = '{:,}'.format(tx_pps)
-          res.update({u'rx_bps':rx_bps_str, u'rx_pps':rx_pps, u'tx_bps':tx_bps_str, u'tx_pps':tx_pps})
+          rx_bps = calc_bps_str(res[u'rx-bytes'], self.interface[name][u'rx-bytes'], delta_sec)
+          tx_bps = calc_bps_str(res[u'tx-bytes'], self.interface[name][u'tx-bytes'], delta_sec)
+          rx_pps = calc_bps_str(res[u'rx-packets'], self.interface[name][u'rx-pakcets'], delta_sec)
+          tx_pps = calc_bps_str(res[u'tx-packets'], self.interface[name][u'tx-pakcets'], delta_sec)
+          res.update({u'rx_bps':rx_bps, u'rx_pps':rx_pps, u'tx_bps':tx_bps, u'tx_pps':tx_pps})
         except:
           res.update({u'rx_bps':'0', u'rx_pps':'0', u'tx_bps':'0', u'tx_pps':'0'})
       self.interfaces[name]=res
