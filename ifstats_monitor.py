@@ -59,8 +59,8 @@ class lago_ifstats():
         try:
           rx_bps = calc_bps_str(res[u'rx-bytes'], self.interface[name][u'rx-bytes'], delta_sec)
           tx_bps = calc_bps_str(res[u'tx-bytes'], self.interface[name][u'tx-bytes'], delta_sec)
-          rx_pps = calc_bps_str(res[u'rx-packets'], self.interface[name][u'rx-pakcets'], delta_sec)
-          tx_pps = calc_bps_str(res[u'tx-packets'], self.interface[name][u'tx-pakcets'], delta_sec)
+          rx_pps = calc_pps_str(res[u'rx-packets'], self.interface[name][u'rx-pakcets'], delta_sec)
+          tx_pps = calc_pps_str(res[u'tx-packets'], self.interface[name][u'tx-pakcets'], delta_sec)
           res.update({u'rx_bps':rx_bps, u'rx_pps':rx_pps, u'tx_bps':tx_bps, u'tx_pps':tx_pps})
         except:
           res.update({u'rx_bps':'0', u'rx_pps':'0', u'tx_bps':'0', u'tx_pps':'0'})
