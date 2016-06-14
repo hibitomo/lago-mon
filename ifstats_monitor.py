@@ -16,39 +16,24 @@
 # limitations under the License.
 
 import time
-import json
 import os
 import sys
 import datetime
 import getopt
 import socket
+from LagomonBase import calc_bps
+from LagomonBase import calc_pps
+from LagomonBase import LagomonBase
 from prettytable import PrettyTable
 from lagosh import ds_client
 
-def calc_pps(n_packets, o_packets, deltatime):
-    """
-    Calculate packets per second.
-    """
-    return (n_packets - o_packets) / deltatime
-
-def calc_bps(n_bytes, o_bytes, deltatime):
-    """
-    Calculate bits per second.
-    """
-    return (n_bytes - o_bytes) * 8 / deltatime
-
-class LagoIfstats(object):
+class LagoIfstats(LagomonBase):
     """
     Interface monitoring tools for lagopus vswitch.
     """
-    interfaces = {}
-    exit_loop = False
-    timestamp = datetime.datetime.now()
+    target_name = "interfaces"
 
-    def __init__(self):
-        self.get_interfaces()
-
-    def get_interfaces(self, calc_throughput=False):
+    def get_data(self, calc_throughput=False):
         """
         Get instarfaces statistics of lagopus vswitch.
         """
@@ -58,10 +43,9 @@ class LagoIfstats(object):
         try:
             ret = ds_client().call('interface\n')
         except socket.error:
-            return self.interfaces
+            return self.data
 
         self.timestamp = n_timestamp
-        delta_sec = delta.total_seconds()
 
         for ifdata in ret:
             name = ifdata[u'name']
@@ -71,24 +55,24 @@ class LagoIfstats(object):
             if calc_throughput == True:
                 try:
                     rx_bps = calc_bps(res[u'rx-bytes'],
-                                          self.interfaces[name][u'rx-bytes'],
-                                          delta_sec)
+                                      self.data[name][u'rx-bytes'],
+                                      delta)
                     tx_bps = calc_bps(res[u'tx-bytes'],
-                                          self.interfaces[name][u'tx-bytes'],
-                                          delta_sec)
+                                      self.data[name][u'tx-bytes'],
+                                      delta)
                     rx_pps = calc_pps(res[u'rx-packets'],
-                                          self.interfaces[name][u'rx-pakcets'],
-                                          delta_sec)
+                                      self.data[name][u'rx-packets'],
+                                      delta)
                     tx_pps = calc_pps(res[u'tx-packets'],
-                                          self.interfaces[name][u'tx-pakcets'],
-                                          delta_sec)
+                                      self.data[name][u'tx-packets'],
+                                      delta)
                     res.update({u'rx_bps':rx_bps, u'rx_pps':rx_pps,
                                 u'tx_bps':tx_bps, u'tx_pps':tx_pps})
                 except KeyError:
                     res.update({u'rx_bps':0, u'rx_pps':0,
                                 u'tx_bps':0, u'tx_pps':0})
-            self.interfaces[name] = res
-        return self.interfaces
+            self.data[name] = res
+        return self.data
 
     def monitor(self, sec=1):
         """
@@ -111,11 +95,11 @@ class LagoIfstats(object):
         table.sortby = u'name'
 
         while self.exit_loop != True:
-            self.get_interfaces(calc_throughput=True)
+            self.get_data(calc_throughput=True)
             os.system('clear')
             print self.timestamp.strftime('%Y/%m/%d %H:%M:%S')
             table = table[0:0]
-            for ifdata in self.interfaces.itervalues():
+            for ifdata in self.data.itervalues():
                 table.add_row([ifdata[u'name'],
                                '{:,}'.format(ifdata[u'rx_bps']),
                                '{:,}'.format(ifdata[u'rx_pps']),
@@ -123,20 +107,6 @@ class LagoIfstats(object):
                                '{:,}'.format(ifdata[u'tx_pps'])])
             print table
             time.sleep(sec)
-
-    def logger(self, sec=1):
-        """
-        Print the interfaces statistics in json
-        """
-        while self.exit_loop != True:
-            print self
-            time.sleep(sec)
-
-    def __str__(self):
-        self.get_interfaces()
-        return json.dumps({u'timestamp':self.timestamp.isoformat(),
-                           u'interfaces':self.interfaces})
-
 
 if __name__ == "__main__":
     try:
@@ -149,9 +119,6 @@ if __name__ == "__main__":
         if opt == '-m':
             IFSTATS.monitor(int(arg))
         elif opt == '-l':
-            IFSTATS.logger(int(arg))
+            IFSTATS.logger(int(arg), calc_throughput=True)
 
     IFSTATS.monitor()
-
-
-
