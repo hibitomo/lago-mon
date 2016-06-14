@@ -85,8 +85,8 @@ class lago_ifstats():
     table.sortby = u'name'
 
     while self.exit_loop != True:
-      os.system('clear')
       self.get_interfaces(calc_throughput = True)
+      os.system('clear')
       print self.timestamp.strftime('%Y/%m/%d %H:%M:%S')
       table=table[0:0]
       for ifdata in self.interfaces.itervalues():

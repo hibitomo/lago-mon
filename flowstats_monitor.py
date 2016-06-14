@@ -24,6 +24,16 @@ import getopt
 from prettytable import PrettyTable
 from lagosh import ds_client
 
+def calc_pps(n_packets, o_packets, deltatime):
+  return (n_packets - o_packets) / deltatime
+def calc_pps_str(n_packets, o_packets, dletatime):
+  return '{:,}'.format(calc_pps(n_packets, o_pakcets, deltatime))
+
+def calc_bps(n_bytes, o_bytes, deltatime):
+  return (n_bitcount - o_bitcounts) * 8 / deltatime
+def calc_bps_str(n_bytes, o_bytes, deltatime):
+  return '{:,}'.format(calc_bps(n_bytes, o_bytes, deltatime))
+
 class lago_brstats():
   bridges = {}
   exit_loop = False
@@ -31,14 +41,54 @@ class lago_brstats():
   def __init__(self):
     self.get_bridges()
 
-  def get_bridges(self):
-    self.timestamp = datetime.datetime.now()
+  def get_bridges(self, calc_throughput = False):
+    n_timestamp = datetime.datetime.now()
+    try:
+      delta = n_timestamp - self.timestamp
+    except:
+      delta = n_timestamp - n_timestamp
+    self.timestamp = n_timestamp
+    delta_sec = delta.total_seconds()
+
     for brdata in ds_client().call('bridge\n'):
+      if calc_throughput == True:
+        try:
+          lps = calc_pps_str(brdata[u'flow-lookup-count'], self.bridge[brdata[u'name']][u'flow-lookup-count'], delta_sec)
+          mps = calc_pps_str(brdata[u'flow-matched-count'], self.bridge[brdata[u'name']][u'flow-matched-count'], delta_sec)
+          brdata.update({u'lookup_per_sec':lps, u'match_per_sec':mps})
+        except:
+          brdata.update({u'lookup_per_sec':'0', u'match_per_sec':'0'})
+        try:
+          c_rate = (brdata[u'flowcache-hit'] - self.bridge[brdata[u'name']][u'flowcache-hit']) / (brdata[u'flow-lookup-count'] - self.bridge[bridge[u'name']][u'flow-lookup-count'])
+          bridge.update({u'cache_hitrate':str(c_rate)})
+        except:
+          brdata.update({u'cache_hitrate':'-'})
       self.bridges[brdata[u'name']] = brdata
     return self.bridges
 
   def monitor(self, sec = 1):
-    pass
+    lps_heading = "{: ^12}".format("flow lookup/sec")
+    mps_heading = "{: ^12}".format("flow match/sec")
+    c_rate_heading = "{: ^5}".format("cache hit rate")
+    table = PrettyTable([u'name', mps_heading, lps_heading, c_rate_heading])
+    table.align[u'name'] = 'c'
+    table.align[mps_heading] = 'r'
+    table.align[lps_heading] = 'r'
+    table.align[c_rate_heading] = 'l'
+    table.sortby = u'name'
+
+    while self.exit_loop != True:
+      self.get_bridges(calc_throughput = True)
+      os.system('clear')
+      print self.timestamp.strftime('%Y/%m/%d %H:%M:%S')
+      table = table[0:0]
+      for brdata in self.bridges.itervalues():
+        table.add_row([brdata[u'name'],
+                       brdata[u'match_per_sec'],
+                       brdata[u'lookup_per_sec'],
+                       brdata[u'cache_hitrate']])
+      print table
+      time.sleep(sec)
 
   def __str__(self):
     self.get_bridges()
